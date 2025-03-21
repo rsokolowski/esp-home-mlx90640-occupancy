@@ -13,10 +13,8 @@ esp32:
     type: arduino
 
 external_components:
-  - source:
-      type: local
-      path: components
-    components: [mlx90640]
+  - source: github://rsokolowski/esp-home-mlx90640-occupancy
+    components: [ mlx90640 ]
 
 # ESP32 Wemos C3 Mini LED light. Remove if different board.
 light:

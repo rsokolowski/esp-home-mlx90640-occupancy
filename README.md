@@ -35,9 +35,19 @@ A few tips for bathroom installation:
 
 ## Installation
 
-1. Copy the `components/mlx90640` directory to your ESPHome `components` folder
+1. Use the external_components directive to include the MLX90640 component in your YAML configuration:
+   ```yaml
+   external_components:
+     - source:
+         type: git
+         url: https://github.com/rsokolowski/esp-home-mlx90640-occupancy
+       components: [mlx90640]
+   ```
+
 2. Configure your YAML file (see example below)
 3. Deploy to your ESP32 device using ESPHome
+
+A complete example configuration can be found in the `mlx90640_sample.yaml` file included in this repository.
 
 ## Configuration
 
