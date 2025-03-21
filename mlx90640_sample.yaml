@@ -1,0 +1,87 @@
+esphome:
+  name: esp-mlx90640
+  friendly_name: esp-mlx90640
+  min_version: 2024.11.0
+  name_add_mac_suffix: false
+  libraries:
+    - FS
+    - Wire
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [mlx90640]
+
+# ESP32 Wemos C3 Mini LED light. Remove if different board.
+light:
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
+    pin: GPIO7
+    num_leds: 1
+    name: "Onboard LED"
+
+i2c:
+  - id: bus_i2c
+    sda: GPIO06
+    scl: GPIO10
+    scan: true
+
+# Needed for includes in the mlx90640 component.
+text_sensor:
+binary_sensor:
+sensor:
+
+mlx90640:
+  id: thermal_cam
+  update_interval: 0.3s
+  sda: 6  # I2C SDA PIN
+  scl: 10  # I2C SCL PIN
+  frequency: 400000  # I2C Clock Frequency
+  address: 0x33 # MLX90640 Address
+  refresh_rate: 4 # 0x05 For 16Hz or 0x04 for 8Hz
+
+  # Occupancy detection
+  algorithm_type: baseline       # Options: "baseline" (original) or "knn" (K-Nearest Neighbors)
+  temp_diff_threshold: 1.0  # Temperature difference threshold in °C
+  blob_size_threshold: 10   # Size threshold for a blob to be considered a person
+  human_temp_diff_min: 1.0  # Minimum average temperature difference for a human
+  human_temp_diff_max: 15.0  # Maximum average temperature difference for a human
+  calibration_frames: 5    # Number of frames to use for calibration
+  exit_debounce_frames: 3   # Number of consecutive empty frames required to transition to unoccupied state
+  blob_proximity_threshold: 1  # Pixels of proximity to exclude from background updates (higher = larger exclusion zone)
+  
+  
+  # Occupancy binary sensor
+  occupancy:
+    name: occupancy
+
+  enable_monitoring: true  # Controls whether monitoring sensors are exposed
+  blob_size:
+    name: blob_size
+  temp_diff:
+    name: blob_temp_diff
+  # Blob details text sensor (updated when occupancy changes from no to yes)
+  blob_details:
+    name: blob_details
+    icon: "mdi:motion-sensor"
+  # Main loop performance monitoring
+  loop_duration:
+    name: loop_duration
+
+
+# Standalone calibration button with automation
+button:
+  - platform: template
+    name: calibrate_background
+    icon: "mdi:refresh"
+    entity_category: "config"
+    on_press:
+      then:
+        - lambda: 'id(thermal_cam).start_calibration();'
