@@ -36,20 +36,8 @@ void BaselineOccupancyDetector::calibrateBackground(const float* thermalFrame, i
     ESP_LOGI(TAG, "Background model initialized");
 }
 
-void BaselineOccupancyDetector::updateBackground(const float* thermalFrame) {
-    // Gradually update the background model (exponential moving average)
-    const float alpha = 0.1f; // Weight for new data
-    
-    for (int i = 0; i < PIXEL_COUNT; i++) {
-        // Update fixed-point model
-        backgroundModel[i] = (1.0f - alpha) * backgroundModel[i] + alpha * thermalFrame[i];
-    }
-    
-    lastBackgroundUpdateTime = millis();
-    ESP_LOGI(TAG, "Background model updated");
-}
 
-// Update background selectively, excluding pixels in the mask
+// Update background selectively, excluding pixels in the mask (if provided)
 void BaselineOccupancyDetector::updateBackgroundWithMask(const float* thermalFrame, const bool* excludeMask) {
     // Check if it's too soon to update the background model
     unsigned long currentTime = millis();
@@ -60,25 +48,31 @@ void BaselineOccupancyDetector::updateBackgroundWithMask(const float* thermalFra
         return;
     }
     
-    // Gradually update the background model (exponential moving average) only for unmasked pixels
+    // Gradually update the background model (exponential moving average)
     const float alpha = 0.05f; // Reduced weight for new data (from 0.1 to 0.05)
     int updatedPixels = 0;
-    
-    // First check if we're updating too many pixels (which might indicate a detection issue)
     int excludedPixels = 0;
-    for (int i = 0; i < PIXEL_COUNT; i++) {
-        if (excludeMask[i]) {
-            excludedPixels++;
+    
+    // Check if we have a mask to use
+    bool useFullUpdate = (excludeMask == nullptr);
+    
+    // Calculate exclusion statistics if using a mask
+    if (!useFullUpdate) {
+        for (int i = 0; i < PIXEL_COUNT; i++) {
+            if (excludeMask[i]) {
+                excludedPixels++;
+            }
         }
     }
     
-    // If no pixels are excluded and we've previously detected occupancy,
+    // If no pixels are excluded (or mask is null) and we've previously detected occupancy,
     // be more conservative with background updates to avoid incorporating human presence
-    const float effective_alpha = (excludedPixels == 0 && isCurrentlyOccupied) ? 0.01f : alpha;
+    const float effective_alpha = ((excludedPixels == 0) && isCurrentlyOccupied) ? 0.01f : alpha;
     
+    // Update the background model
     for (int i = 0; i < PIXEL_COUNT; i++) {
-        // Only update pixels that are not in blobs or their proximity
-        if (!excludeMask[i]) {
+        // Update pixel if it's not excluded or if we're doing a full update
+        if (useFullUpdate || !excludeMask[i]) {
             // Update model using exponential moving average
             backgroundModel[i] = (1.0f - effective_alpha) * backgroundModel[i] + effective_alpha * thermalFrame[i];
             updatedPixels++;
@@ -86,10 +80,16 @@ void BaselineOccupancyDetector::updateBackgroundWithMask(const float* thermalFra
     }
     
     lastBackgroundUpdateTime = currentTime;
-    // Log the message with the percentage.
-    float updatedPercentage = (static_cast<float>(updatedPixels) / PIXEL_COUNT) * 100.0f;
-    ESP_LOGD(TAG, "Background model updated selectively (%d pixels updated, %.2f%% of total, alpha=%.3f)", 
-             updatedPixels, updatedPercentage, effective_alpha);
+    
+    // Log appropriate message based on update type
+    if (useFullUpdate) {
+        ESP_LOGD(TAG, "Full background model updated (alpha=%.3f)", effective_alpha);
+    } else {
+        // Log selective update with percentage
+        float updatedPercentage = (static_cast<float>(updatedPixels) / PIXEL_COUNT) * 100.0f;
+        ESP_LOGD(TAG, "Background model updated selectively (%d pixels updated, %.2f%% of total, alpha=%.3f)", 
+                 updatedPixels, updatedPercentage, effective_alpha);
+    }
 }
 
 void BaselineOccupancyDetector::floodFill(const bool* binaryImage, bool* visited, 
@@ -345,24 +345,18 @@ OccupancyDetectionStatus BaselineOccupancyDetector::detectOccupancy(const float*
     
     status.isOccupied = isCurrentlyOccupied;
     
-    // Always update background model selectively, regardless of occupancy state
-    
-    // First expand the blob mask to include proximate pixels
-    expandBlobProximity(status.blobMask, blobProximityThreshold);
-    
-    // Check if we have any pixels in the blob mask before updating
-    int maskedPixels = 0;
-    for (int i = 0; i < PIXEL_COUNT; i++) {
-        if (status.blobMask[i]) {
-            maskedPixels++;
-        }
+    // Only use blob mask for background update if blob indicates occupancy
+    if (blobIndicatesOccupancy) {
+        // First expand the blob mask to include proximate pixels
+        expandBlobProximity(status.blobMask, blobProximityThreshold);
+        
+        // Update background for pixels not in the expanded blob mask
+        updateBackgroundWithMask(thermalFrame, status.blobMask);
+    } else {
+        // No occupancy indication - update the entire background
+        ESP_LOGD(TAG, "No occupancy indication - updating entire background");
+        updateBackgroundWithMask(thermalFrame, nullptr);
     }
-    
-    // Log the number of masked pixels
-    ESP_LOGD(TAG, "Total masked pixels before background update: %d", maskedPixels);
-    
-    // Update background for pixels not in the expanded blob mask
-    updateBackgroundWithMask(thermalFrame, status.blobMask);
     
     return status;
 }

@@ -50,8 +50,7 @@ public:
     
     // Initialize or reset the background model
     void calibrateBackground(const float* thermalFrame, int frameCount = 10);
-    void updateBackground(const float* thermalFrame);
-    void updateBackgroundWithMask(const float* thermalFrame, const bool* blobMask);
+    void updateBackgroundWithMask(const float* thermalFrame, const bool* blobMask = nullptr);
     
     // Interface methods
     void calibrateBackground(const float* thermalFrame) override;
