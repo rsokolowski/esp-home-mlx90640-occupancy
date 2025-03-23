@@ -265,6 +265,35 @@ void MLX90640::mlx_update(){
                            status.blobSize, status.averageTemperatureDifference);
                     blob_details_sensor_->publish_state(details);
                     ESP_LOGI(TAG, "Occupancy detected: %s", details);
+                    
+                    // Reset the non-occupied blob tracking when occupancy is detected
+                    largest_non_occupied_blob_size_ = 0;
+                    largest_non_occupied_temp_diff_ = 0.0f;
+                    
+                    // Publish empty state to indicate reset
+                    if (non_occupied_blob_details_sensor_ != nullptr) {
+                        non_occupied_blob_details_sensor_->publish_state("Reset");
+                    }
+                }
+                
+                // Track the largest non-occupied blob when no occupancy is detected
+                if (!status.isOccupied && status.blobSize > 0) {
+                    if (status.blobSize > largest_non_occupied_blob_size_ || 
+                        (status.blobSize == largest_non_occupied_blob_size_ && 
+                         status.averageTemperatureDifference > largest_non_occupied_temp_diff_)) {
+                        
+                        largest_non_occupied_blob_size_ = status.blobSize;
+                        largest_non_occupied_temp_diff_ = status.averageTemperatureDifference;
+                        
+                        // Update the sensor with the new largest non-occupancy blob
+                        if (non_occupied_blob_details_sensor_ != nullptr) {
+                            char details[128];
+                            snprintf(details, sizeof(details), "Largest Non-Occupied Blob: %d px, Temp Diff: %.2f°C", 
+                                   largest_non_occupied_blob_size_, largest_non_occupied_temp_diff_);
+                            non_occupied_blob_details_sensor_->publish_state(details);
+                            ESP_LOGD(TAG, "Updated largest non-occupied blob: %s", details);
+                        }
+                    }
                 }
                 
                 // Update previous occupancy state

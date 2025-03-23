@@ -30,11 +30,16 @@ namespace esphome {
                 sensor::Sensor *temp_diff_sensor_{nullptr};
                 sensor::Sensor *loop_duration_sensor_{nullptr};
                 text_sensor::TextSensor *blob_details_sensor_{nullptr};
+                text_sensor::TextSensor *non_occupied_blob_details_sensor_{nullptr};
                 // Debug sensors removed
 
                 // Monitoring parameters
                 bool enable_monitoring_ = true;
                 bool previous_occupancy_state_ = false;
+                
+                // Non-occupied blob tracking
+                int largest_non_occupied_blob_size_ = 0;
+                float largest_non_occupied_temp_diff_ = 0.0f;
 
                 // Occupancy detection parameters
                 float temp_diff_threshold_ = 2.0f;
@@ -67,6 +72,7 @@ namespace esphome {
                void set_temp_diff_sensor(sensor::Sensor *sensor){this->temp_diff_sensor_= sensor;};
                void set_loop_duration_sensor(sensor::Sensor *sensor){this->loop_duration_sensor_= sensor;};
                void set_blob_details_sensor(text_sensor::TextSensor *sensor){this->blob_details_sensor_= sensor;};
+               void set_non_occupied_blob_details_sensor(text_sensor::TextSensor *sensor){this->non_occupied_blob_details_sensor_= sensor;};
                // Debug sensor setters removed
                void set_enable_monitoring(bool enable){this->enable_monitoring_ = enable;}
           

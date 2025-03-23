@@ -45,6 +45,7 @@ CONF_CALIBRATION_FRAMES = "calibration_frames"
 CONF_BLOB_SIZE = "blob_size"
 CONF_TEMP_DIFF = "temp_diff"
 CONF_BLOB_DETAILS = "blob_details"
+CONF_NON_OCCUPIED_BLOB_DETAILS = "non_occupied_blob_details"
 CONF_ALGORITHM_TYPE = "algorithm_type"
 # CONF_CALIBRATION_BUTTON = "calibration" - Removed, now using standalone button
 
@@ -98,6 +99,9 @@ CONFIG_SCHEMA = (
                 ),
         cv.Optional(CONF_BLOB_DETAILS): text_sensor.text_sensor_schema(
                     icon="mdi:motion-sensor",
+                ),
+        cv.Optional(CONF_NON_OCCUPIED_BLOB_DETAILS): text_sensor.text_sensor_schema(
+                    icon="mdi:motion-sensor-off",
                 ),
         # Debug sensors removed
         # Removed calibration button - now implemented as standalone button
@@ -175,6 +179,11 @@ async def to_code(config):
         conf = config[CONF_BLOB_DETAILS]
         sens = await text_sensor.new_text_sensor(conf)
         cg.add(var.set_blob_details_sensor(sens))
+        
+    if CONF_NON_OCCUPIED_BLOB_DETAILS in config:
+        conf = config[CONF_NON_OCCUPIED_BLOB_DETAILS]
+        sens = await text_sensor.new_text_sensor(conf)
+        cg.add(var.set_non_occupied_blob_details_sensor(sens))
     
     # Debug sensors removed
             

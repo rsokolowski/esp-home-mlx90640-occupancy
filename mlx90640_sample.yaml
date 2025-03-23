@@ -69,6 +69,10 @@ mlx90640:
   blob_details:
     name: blob_details
     icon: "mdi:motion-sensor"
+  # Non-occupied blob details text sensor (tracks largest blob during non-occupied periods)
+  non_occupied_blob_details:
+    name: non_occupied_blob_details
+    icon: "mdi:motion-sensor-off"
   # Main loop performance monitoring
   loop_duration:
     name: loop_duration
